@@ -29,6 +29,8 @@ class CMouseEvents
 public:
     using VectorOfLinesType = std::vector<std::pair<cv::Point, cv::Point>>;
 
+    CMouseEvents() = default;
+
     CMouseEvents(const std::string& WinName, const std::string& ConfigPath, const std::string& SnapPath)
         : m_WinName{WinName}
         , m_WinNameZoom{m_WinName+"Zoom"}
