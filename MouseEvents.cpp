@@ -13,6 +13,7 @@ cv::Point CMouseEvents::m_P1{};
 cv::Point CMouseEvents::m_P2{};
 bool CMouseEvents::m_LeftClicked = false;
 bool CMouseEvents::m_RightClicked = false;
+bool CMouseEvents::m_LeftDoubleClicked = false;
 cv::MouseEventFlags CMouseEvents::m_Flag = cv::MouseEventFlags::EVENT_FLAG_LBUTTON;
 
 std::ostream& operator<<(std::ostream& OS, const cv::Point& Pixel)
@@ -32,19 +33,19 @@ bool operator!=(const cv::Point& P1, const cv::Point& P2)
     return !(P1==P2);
 }
 
-void MyFilledCircle(cv::Mat& Img, const cv::Point& Center)
+void MyFilledCircle(cv::Mat& Img, const cv::Point& Center, cv::Scalar Color)
 {
     int Radius{4};
 
     cv::circle(Img,
                Center,
                Radius,
-               cv::Scalar(255, 255, 255),
+               Color,
                cv::FILLED,
                cv::LINE_8);
 }
 
-void MyLine(cv::Mat& Img, const cv::Point& Start, const cv::Point& End)
+void MyLine(cv::Mat& Img, const cv::Point& Start, const cv::Point& End, cv::Scalar Color)
 {
     int Thickness = 2;
     int LineType = cv::LINE_8;
@@ -52,21 +53,21 @@ void MyLine(cv::Mat& Img, const cv::Point& Start, const cv::Point& End)
     cv::line(Img,
              Start,
              End,
-             cv::Scalar(0, 255, 0),
+             Color,
              Thickness,
              LineType);
 }
 
-void DrawText(cv::Mat& Img, const cv::Point& Pixel)
+void DrawText(cv::Mat& Img, const cv::Point& Pixel, cv::Scalar Color)
 {
     std::stringstream ss;
     ss << Pixel;
-    cv::putText(Img, ss.str().c_str(), Pixel, cv::FONT_HERSHEY_SIMPLEX, 0.5 , cv::Scalar(0,0,0));
+    cv::putText(Img, ss.str().c_str(), Pixel, cv::FONT_HERSHEY_SIMPLEX, 0.5, Color);
 }
 
 void CMouseEvents::AddLines()
 {
-    // Left click drag and drop to add lines
+    // Left click drag and drop to add lines to the current zone
     if(!m_LeftClicked && m_LastLeftClicked)
     {
         // Add only those lines whose start and end points are not close enough
@@ -93,7 +94,7 @@ void CMouseEvents::AddLines()
     }
     m_LastLeftClicked = m_LeftClicked;
 
-    // Right click to clear all lines
+    // Right click to end adding lines to the current zone
     if(!m_RightClicked && m_LastRightClicked)
     {
         // Close the loop if the end point of last line and the first point of first line are close enough
@@ -105,14 +106,26 @@ void CMouseEvents::AddLines()
             }
         }
 
-        // Print all lines before clearing
-        for(const auto& Line : m_CurrentLines)
-        {
-            std::cout<<Line.first << " " << Line.second << std::endl;
-        }
+        // Print all lines in the current zone
+        WriteConfigXML(std::cout, m_ZoneId, m_CurrentLines);
+
+        // Add lines in the current zone to all lines
+        m_AllLines.emplace(m_ZoneId++, m_CurrentLines);
+
+        // Clear current lines
         m_CurrentLines.clear();
     }
     m_LastRightClicked = m_RightClicked;
+
+    // Left double click to write all zones to the configuration file
+    if(m_LeftDoubleClicked)
+    {
+        for(const auto& KeyValue : m_AllLines)
+        {
+            WriteConfigXML(m_Ofs, KeyValue.first, KeyValue.second);
+        }
+    }
+    m_LeftDoubleClicked = false;
 }
 
 void CMouseEvents::Draw()
@@ -131,6 +144,14 @@ void CMouseEvents::Draw()
         MyLine(*m_CurrentFramePtr, Line.first, Line.second);
         DrawText(*m_CurrentFramePtr, Line.first);
         DrawText(*m_CurrentFramePtr, Line.second);
+    }
+
+    for(const auto& KeyValue : m_AllLines)
+    {
+        for(const auto& Line : KeyValue.second)
+        {
+            MyLine(*m_CurrentFramePtr, Line.first, Line.second, cv::Scalar(255, 0, 0));
+        }
     }
 }
 
@@ -176,6 +197,10 @@ void CMouseEvents::OnMouse(int Event, int X, int Y, int Flag, void* /*Param*/)
         m_RightClicked  = false;
         break;
 
+    case cv::EVENT_LBUTTONDBLCLK:
+        m_LeftDoubleClicked = true;
+        break;
+
     case cv::EVENT_MOUSEMOVE:
         if(m_LeftClicked)
         {
@@ -186,6 +211,15 @@ void CMouseEvents::OnMouse(int Event, int X, int Y, int Flag, void* /*Param*/)
 
     default:
         break;
+    }
+}
+
+template<typename T>
+void CMouseEvents::WriteConfigXML(T& Ofs, int ZoneId, const VectorOfLinesType& CurrentLines)
+{
+    for(const auto& Line : CurrentLines)
+    {
+        Ofs << Line.first << " " << Line.second << std::endl;
     }
 }
 

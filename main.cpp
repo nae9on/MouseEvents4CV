@@ -8,9 +8,9 @@
 
 int main()
 {
-    auto inFilename = 0; // pass 0 for webcam input
+    auto inFilename = 0;
 
-    MouseEvents::CMouseEvents MEvents{"Draw"};
+    MouseEvents::CMouseEvents MEvents("Draw", "/home/akadar/Desktop/Config.xml");
 
     cv::VideoCapture inVid;
     inVid.open(inFilename);
