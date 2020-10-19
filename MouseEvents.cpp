@@ -11,6 +11,8 @@ constexpr int Int_Pixel_Precision{10};
 
 cv::Point CMouseEvents::m_P1{};
 cv::Point CMouseEvents::m_P2{};
+cv::Point CMouseEvents::m_ScaledP1{};
+cv::Point CMouseEvents::m_ScaledP2{};
 bool CMouseEvents::m_LeftClicked = false;
 bool CMouseEvents::m_RightClicked = false;
 bool CMouseEvents::m_LeftDoubleClicked = false;
@@ -58,11 +60,12 @@ void MyLine(cv::Mat& Img, const cv::Point& Start, const cv::Point& End, cv::Scal
              LineType);
 }
 
-void DrawText(cv::Mat& Img, const cv::Point& Pixel, cv::Scalar Color)
+template<typename T>
+void DrawText(cv::Mat& Img, const T& Data, const cv::Point& Location, cv::Scalar Color)
 {
     std::stringstream ss;
-    ss << Pixel;
-    cv::putText(Img, ss.str().c_str(), Pixel, cv::FONT_HERSHEY_SIMPLEX, 0.5, Color);
+    ss << Data;
+    cv::putText(Img, ss.str().c_str(), Location, cv::FONT_HERSHEY_SIMPLEX, 0.5, Color);
 }
 
 void CMouseEvents::AddLines()
@@ -125,34 +128,40 @@ void CMouseEvents::AddLines()
             WriteConfigXML(m_Ofs, KeyValue.first, KeyValue.second);
         }
     }
-    m_LeftDoubleClicked = false;
 }
 
 void CMouseEvents::Draw()
 {
     if(m_LeftClicked)
     {
-        MyFilledCircle(*m_CurrentFramePtr, m_P1);
-        MyFilledCircle(*m_CurrentFramePtr, m_P2);
-        MyLine(*m_CurrentFramePtr, m_P1, m_P2);
-        DrawText(*m_CurrentFramePtr, m_P1);
-        DrawText(*m_CurrentFramePtr, m_P2);
+        MyFilledCircle(*m_CurrentFramePtr, m_ScaledP1);
+        MyFilledCircle(*m_CurrentFramePtr, m_ScaledP2);
+        MyLine(*m_CurrentFramePtr, m_ScaledP1, m_ScaledP2);
+        DrawText(*m_CurrentFramePtr, m_P1, m_ScaledP1);
+        DrawText(*m_CurrentFramePtr, m_P2, m_ScaledP2);
     }
 
     for(const auto& Line : m_CurrentLines)
     {
-        MyLine(*m_CurrentFramePtr, Line.first, Line.second);
-        DrawText(*m_CurrentFramePtr, Line.first);
-        DrawText(*m_CurrentFramePtr, Line.second);
+        MyLine(*m_CurrentFramePtr, Line.first*m_Scale, Line.second*m_Scale);
+        DrawText(*m_CurrentFramePtr, Line.first, Line.first*m_Scale);
+        DrawText(*m_CurrentFramePtr, Line.second, Line.second*m_Scale);
     }
 
     for(const auto& KeyValue : m_AllLines)
     {
         for(const auto& Line : KeyValue.second)
         {
-            MyLine(*m_CurrentFramePtr, Line.first, Line.second, cv::Scalar(255, 0, 0));
+            MyLine(*m_CurrentFramePtr, Line.first*m_Scale, Line.second*m_Scale, cv::Scalar(255, 0, 0));
         }
     }
+
+    if(m_LeftDoubleClicked)
+    {
+        cv::imwrite(m_SnapPath, *m_CurrentFramePtr); // write image
+    }
+    m_LeftDoubleClicked = false;
+
 }
 
 void CMouseEvents::DrawROI()
@@ -177,10 +186,14 @@ void CMouseEvents::OnMouse(int Event, int X, int Y, int Flag, void* /*Param*/)
 
     case  cv::EVENT_LBUTTONDOWN:
         m_LeftClicked = true;
-        m_P1.x=X;
-        m_P1.y=Y;
-        m_P2.x=X;
-        m_P2.y=Y;
+        m_P1.x=X/m_Scale;
+        m_P1.y=Y/m_Scale;
+        m_P2.x=X/m_Scale;
+        m_P2.y=Y/m_Scale;
+        m_ScaledP1.x = X;
+        m_ScaledP1.y = Y;
+        m_ScaledP2.x = X;
+        m_ScaledP2.y = Y;
         break;
 
     case cv::EVENT_RBUTTONDOWN:
@@ -189,8 +202,10 @@ void CMouseEvents::OnMouse(int Event, int X, int Y, int Flag, void* /*Param*/)
 
     case  cv::EVENT_LBUTTONUP:
         m_LeftClicked = false;
-        m_P2.x=X;
-        m_P2.y=Y;
+        m_P2.x=X/m_Scale;
+        m_P2.y=Y/m_Scale;
+        m_ScaledP2.x = X;
+        m_ScaledP2.y = Y;
         break;
 
     case cv::EVENT_RBUTTONUP:
@@ -204,8 +219,10 @@ void CMouseEvents::OnMouse(int Event, int X, int Y, int Flag, void* /*Param*/)
     case cv::EVENT_MOUSEMOVE:
         if(m_LeftClicked)
         {
-            m_P2.x=X;
-            m_P2.y=Y;
+            m_P2.x=X/m_Scale;
+            m_P2.y=Y/m_Scale;
+            m_ScaledP2.x = X;
+            m_ScaledP2.y = Y;
         }
         break;
 

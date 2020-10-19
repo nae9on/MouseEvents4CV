@@ -10,7 +10,7 @@ int main()
 {
     auto inFilename = 0;
 
-    MouseEvents::CMouseEvents MEvents("Draw", "/home/akadar/Desktop/Config.xml");
+    MouseEvents::CMouseEvents MEvents("Draw", "/home/akadar/Desktop/Config.xml", "/home/akadar/Desktop/Config.jpg");
 
     cv::VideoCapture inVid;
     inVid.open(inFilename);

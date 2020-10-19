@@ -21,16 +21,19 @@ void MyFilledCircle(cv::Mat& Img, const cv::Point& Center, cv::Scalar Color = cv
 
 void MyLine(cv::Mat& Img, const cv::Point& Start, const cv::Point& End, cv::Scalar Color = cv::Scalar(0, 255, 0));
 
-void DrawText(cv::Mat& Img, const cv::Point& P, cv::Scalar Color = cv::Scalar(0,0,0));
+template<typename T>
+void DrawText(cv::Mat& Img, const T& Data, const cv::Point& Location, cv::Scalar Color = cv::Scalar(0, 0, 0));
 
 class CMouseEvents
 {
 public:
     using VectorOfLinesType = std::vector<std::pair<cv::Point, cv::Point>>;
 
-    CMouseEvents(const std::string& WinName, const std::string& ConfigPath)
+    CMouseEvents(const std::string& WinName, const std::string& ConfigPath, const std::string& SnapPath)
         : m_WinName{WinName}
         , m_WinNameZoom{m_WinName+"Zoom"}
+        , m_ConfigPath{ConfigPath}
+        , m_SnapPath{SnapPath}
     {
         cv::namedWindow(m_WinName, cv::WINDOW_AUTOSIZE);
         cv::setMouseCallback(m_WinName, OnMouse);
@@ -38,14 +41,14 @@ public:
         {
             cv::namedWindow(m_WinNameZoom, cv::WINDOW_AUTOSIZE);
         }
-        m_Ofs = std::ofstream(ConfigPath, std::ofstream::out | std::ofstream::trunc);
+        m_Ofs = std::ofstream(m_ConfigPath, std::ofstream::out | std::ofstream::trunc);
     }
 
     // Show the current frame
     void Show(const cv::Mat& Frame)
     {
         ++m_FrameNum;        
-        cv::resize(Frame, ScaledImage, cv::Size(Frame.cols*Scale, Frame.rows*Scale));
+        cv::resize(Frame, ScaledImage, cv::Size(Frame.cols*m_Scale, Frame.rows*m_Scale));
         m_CurrentFramePtr = &ScaledImage;
         AddLines();
         Draw();
@@ -74,7 +77,7 @@ private:
     template<typename T>
     void WriteConfigXML(T& Ofs, int ZoneId, const VectorOfLinesType& CurrentLines);
 
-    static cv::Point m_P1, m_P2;
+    static cv::Point m_P1, m_P2, m_ScaledP1, m_ScaledP2;
     static bool m_LeftClicked;
     static bool m_RightClicked;
     static bool m_LeftDoubleClicked;
@@ -83,9 +86,11 @@ private:
     bool m_LastRightClicked{false};
 
     // Display related
+    static const int m_Scale{2};
     const std::string m_WinName{};
     const std::string m_WinNameZoom{};
-    const int Scale{2};
+    const std::string m_ConfigPath{};
+    const std::string m_SnapPath{};
     cv::Mat ScaledImage;
     cv::Mat* m_CurrentFramePtr;
     int m_FrameNum{-1}; // Frame counter
