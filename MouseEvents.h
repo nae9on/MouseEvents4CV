@@ -37,17 +37,18 @@ public:
     }
 
     // Show the current frame
-    void Show(cv::Mat& Frame)
+    void Show(const cv::Mat& Frame)
     {
-        ++m_FrameNum;
-        m_CurrentFramePtr = &Frame;
+        ++m_FrameNum;        
+        cv::resize(Frame, ScaledImage, cv::Size(Frame.cols*Scale, Frame.rows*Scale));
+        m_CurrentFramePtr = &ScaledImage;
         AddLines();
         Draw();
         if(m_DrawROI)
         {
             DrawROI();
         }
-        cv::imshow(m_WinName, Frame);        
+        cv::imshow(m_WinName, *m_CurrentFramePtr);
         cv::waitKey(m_Delay);
     }
 
@@ -73,7 +74,9 @@ private:
 
     const std::string m_WinName{};
     const std::string m_WinNameZoom{};
-    const bool m_DrawROI{true};
+    const bool m_DrawROI{false};
+    const int Scale{2};
+    cv::Mat ScaledImage;
     cv::Mat* m_CurrentFramePtr;
     int m_FrameNum{-1}; // Frame counter
     int m_Delay{33}; // Corresponds to 30 FPS
