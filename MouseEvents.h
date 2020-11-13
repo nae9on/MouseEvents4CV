@@ -3,6 +3,8 @@
 #include <opencv2/highgui.hpp>
 #include "opencv2/imgproc.hpp"
 
+#include "TinyXml/tinyxml.h"
+
 #include <iostream>
 #include <vector>
 #include <map>
@@ -43,13 +45,13 @@ public:
         {
             cv::namedWindow(m_WinNameZoom, cv::WINDOW_AUTOSIZE);
         }
-        m_Ofs = std::ofstream(m_ConfigPath, std::ofstream::out | std::ofstream::trunc);
+        //m_Ofs = std::ofstream(m_ConfigPath, std::ofstream::out | std::ofstream::trunc);
     }
 
     // Show the current frame
     void Show(const cv::Mat& Frame)
     {
-        ++m_FrameNum;        
+        ++m_FrameNum;
         cv::resize(Frame, ScaledImage, cv::Size(Frame.cols*m_Scale, Frame.rows*m_Scale));
         m_CurrentFramePtr = &ScaledImage;
         AddLines();
@@ -77,7 +79,10 @@ private:
 
     // Write configuration file
     template<typename T>
-    void WriteConfigXML(T& Ofs, int ZoneId, const VectorOfLinesType& CurrentLines);
+    void WriteConfigXML(T& Ofs, const VectorOfLinesType& CurrentLines);
+
+    // Write configuration file in a nice format (same as Notepad++->Plugins->XML Tools->Pretty print)
+    void PrettyPrint(const std::string&);
 
     static cv::Point m_P1, m_P2, m_ScaledP1, m_ScaledP2;
     static bool m_LeftClicked;
@@ -88,7 +93,7 @@ private:
     bool m_LastRightClicked{false};
 
     // Display related
-    static const int m_Scale{2};
+    static const int m_Scale{1};
     const std::string m_WinName{};
     const std::string m_WinNameZoom{};
     const std::string m_ConfigPath{};
@@ -96,14 +101,15 @@ private:
     cv::Mat ScaledImage;
     cv::Mat* m_CurrentFramePtr;
     int m_FrameNum{-1}; // Frame counter
-    int m_Delay{33}; // Corresponds to 30 FPS
+    int m_Delay{50}; // Corresponds to 30 FPS
     const bool m_DrawROI{false};
 
-    // Zone lines related
-    int m_ZoneId{1};
+    // Domain lines related
+    int m_DomainId{1};
     VectorOfLinesType m_CurrentLines;
     std::map<int, VectorOfLinesType> m_AllLines;
     std::ofstream m_Ofs;
+    TiXmlDocument m_Doc{};
 };
 
 }

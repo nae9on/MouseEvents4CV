@@ -24,10 +24,13 @@ find_package(Boost COMPONENTS system filesystem REQUIRED)
 
 FILE(GLOB allcpp ./*.cpp)
 
+FILE(GLOB TinyXmlcpp ./TinyXml/*.cpp)
+
 add_executable(
 "${PROJECT_NAME}"
 MouseEvents.h
 ${allcpp}
+${TinyXmlcpp}
 )
 
 target_link_libraries("${PROJECT_NAME}" ${OpenCV_LIBS})

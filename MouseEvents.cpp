@@ -2,9 +2,13 @@
 
 #include <iostream>
 #include <stdlib.h>
+#include <stdio.h> // for FILE*
 
 namespace MouseEvents
 {
+
+const std::string Pre{"<Data>"};
+const std::string Post{"</Data>"};
 
 // Pixels within range [0 10] are considered identical
 constexpr int Int_Pixel_Precision{10};
@@ -70,7 +74,7 @@ void DrawText(cv::Mat& Img, const T& Data, const cv::Point& Location, cv::Scalar
 
 void CMouseEvents::AddLines()
 {
-    // Left click drag and drop to add lines to the current zone
+    // Left click drag and drop to add lines to the current Domain
     if(!m_LeftClicked && m_LastLeftClicked)
     {
         // Add only those lines whose start and end points are not close enough
@@ -97,7 +101,7 @@ void CMouseEvents::AddLines()
     }
     m_LastLeftClicked = m_LeftClicked;
 
-    // Right click to end adding lines to the current zone
+    // Right click to end adding lines to the current Domain
     if(!m_RightClicked && m_LastRightClicked)
     {
         // Close the loop if the end point of last line and the first point of first line are close enough
@@ -109,24 +113,33 @@ void CMouseEvents::AddLines()
             }
         }
 
-        // Print all lines in the current zone
-        WriteConfigXML(std::cout, m_ZoneId, m_CurrentLines);
+        // Print all lines in the current Domain
+        WriteConfigXML(std::cout, m_CurrentLines);
 
-        // Add lines in the current zone to all lines
-        m_AllLines.emplace(m_ZoneId++, m_CurrentLines);
+        // Add lines in the current Domain to all lines
+        m_AllLines.emplace(m_DomainId++, m_CurrentLines);
 
         // Clear current lines
         m_CurrentLines.clear();
     }
     m_LastRightClicked = m_RightClicked;
 
-    // Left double click to write all zones to the configuration file
+    // Left double click to write all Domains to the configuration file
     if(m_LeftDoubleClicked)
     {
+        m_Ofs = std::ofstream(m_ConfigPath, std::ofstream::out | std::ofstream::trunc);
+
+        m_Ofs << Pre << std::endl;
+        m_Ofs << "<Domains>" << std::endl;
         for(const auto& KeyValue : m_AllLines)
         {
-            WriteConfigXML(m_Ofs, KeyValue.first, KeyValue.second);
+            WriteConfigXML(m_Ofs, KeyValue.second);
         }
+        m_Ofs << "</Domains>" << std::endl;
+        m_Ofs << Post << std::endl;
+        m_Ofs << std::flush;
+
+        PrettyPrint(m_ConfigPath);
     }
 }
 
@@ -159,8 +172,18 @@ void CMouseEvents::Draw()
     if(m_LeftDoubleClicked)
     {
         cv::imwrite(m_SnapPath, *m_CurrentFramePtr); // write image
-    }
-    m_LeftDoubleClicked = false;
+
+        // Reset
+        m_LeftClicked = false;
+        m_RightClicked = false;
+        m_LeftDoubleClicked = false;
+        m_LastLeftClicked = false;
+        m_LastRightClicked = false;
+        m_DomainId = 1;
+        m_CurrentLines.clear();
+        m_AllLines.clear();
+        m_Ofs.close();
+    }    
 
 }
 
@@ -232,12 +255,28 @@ void CMouseEvents::OnMouse(int Event, int X, int Y, int Flag, void* /*Param*/)
 }
 
 template<typename T>
-void CMouseEvents::WriteConfigXML(T& Ofs, int ZoneId, const VectorOfLinesType& CurrentLines)
+void CMouseEvents::WriteConfigXML(T& Ofs, const VectorOfLinesType& CurrentLines)
 {
+    Ofs << "<Domain>" << std::endl;
     for(const auto& Line : CurrentLines)
     {
-        Ofs << Line.first << " " << Line.second << std::endl;
+        Ofs << "\t<Point X=\"" << Line.first.x << "\" Y=\"" << Line.first.y << "\"/>" << std::endl;
     }
+    Ofs << "</Domain>" << std::endl;
+}
+
+void CMouseEvents::PrettyPrint(const std::string& FileName = std::string{})
+{
+    m_Doc.LoadFile(FileName.c_str(), TiXmlEncoding::TIXML_ENCODING_UTF8);
+    if(!FileName.empty())
+    {
+        FILE *Fp = fopen(FileName.c_str(), "w+");
+        m_Doc.Print(Fp);
+        fclose(Fp);
+    }
+
+    m_Doc.Print();
+    std::cout << std::flush;
 }
 
 }
