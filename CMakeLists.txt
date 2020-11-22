@@ -15,15 +15,15 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 
 if (WIN32)
-    # this overrides the OpenCV_DIR env variable (if set previously)
     set(OpenCV_DIR "C:/Users/ahkad/opencv/gnu_build/install")
-endif (WIN32)
-find_package(OpenCV REQUIRED)
+elseif (UNIX)
+    set(OpenCV_DIR "/usr/local/lib/cmake/opencv4")
+endif()
 
+find_package(OpenCV REQUIRED)
 find_package(Boost COMPONENTS system filesystem REQUIRED)
 
 FILE(GLOB allcpp ./*.cpp)
-
 FILE(GLOB TinyXmlcpp ./TinyXml/*.cpp)
 
 add_executable(
