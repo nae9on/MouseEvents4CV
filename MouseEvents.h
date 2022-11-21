@@ -1,16 +1,17 @@
 #pragma once
 
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <optional>
+#include <vector>
+
 #include <opencv2/highgui.hpp>
-#include "opencv2/imgproc.hpp"
+#include <opencv2/imgproc.hpp>
 
 #include "TinyXml/tinyxml.h"
 
-#include <iostream>
-#include <vector>
-#include <map>
-#include <fstream>
-
-namespace MouseEvents
+namespace mouseevents
 {
 
 std::ostream& operator<<(std::ostream& OS, const cv::Point& P);
@@ -29,44 +30,40 @@ void DrawText(cv::Mat& Img, const T& Data, const cv::Point& Location, cv::Scalar
 class CMouseEvents
 {
 public:
-    using VectorOfLinesType = std::vector<std::pair<cv::Point, cv::Point>>;
+    using PointType = cv::Point;
+    using LineType = std::pair<PointType, PointType>;
+    using LinesType = std::vector<LineType>;
 
-    CMouseEvents() = default;
-
-    CMouseEvents(const std::string& WinName, const std::string& ConfigPath, const std::string& SnapPath)
-        : m_WinName{WinName}
-        , m_WinNameZoom{m_WinName+"Zoom"}
-        , m_ConfigPath{ConfigPath}
-        , m_SnapPath{SnapPath}
+    struct SZone
     {
-        cv::namedWindow(m_WinName, cv::WINDOW_AUTOSIZE);
-        cv::setMouseCallback(m_WinName, OnMouse);
-        if(m_DrawROI)
-        {
-            cv::namedWindow(m_WinNameZoom, cv::WINDOW_AUTOSIZE);
-        }
-        //m_Ofs = std::ofstream(m_ConfigPath, std::ofstream::out | std::ofstream::trunc);
-    }
+        PointType GetCenter() const;
+        PointType GetArrowHead() const;
+        double GetDistance(PointType Point) const;
+        void Rotate(int Degree);
+
+        int s_ZoneId{-1};
+        std::string s_ZoneName{"Default"};
+        LinesType s_Lines;
+        mutable std::optional<PointType> s_Center{};
+        mutable std::optional<PointType> s_ArrowHead{};
+        int s_Angle{0};
+    };
+
+    CMouseEvents();
+
+    CMouseEvents(const std::string& WinName, const std::string& ConfigPath, const std::string& SnapPath, bool DrawRoI);
+
+    void SetConfigZones(const std::map<int, SZone>& Zones);
 
     // Show the current frame
-    void Show(const cv::Mat& Frame)
-    {
-        ++m_FrameNum;
-        cv::resize(Frame, ScaledImage, cv::Size(Frame.cols*m_Scale, Frame.rows*m_Scale));
-        m_CurrentFramePtr = &ScaledImage;
-        AddLines();
-        Draw();
-        if(m_DrawROI)
-        {
-            DrawROI();
-        }
-        cv::imshow(m_WinName, *m_CurrentFramePtr);
-        cv::waitKey(m_Delay);
-    }
+    void Show(const cv::Mat& Frame);
 
 private:
     // Add lines to the vector of lines
     void AddLines();
+
+    // Update zones
+    void Update();
 
     // Draw lines on the current frame
     void Draw();
@@ -77,18 +74,14 @@ private:
     // Mouse events related (static members used in the Callback function for mouse events)
     static void OnMouse(int Event, int X, int Y, int Flag, void* Param);
 
-    // Write configuration file
-    template<typename T>
-    void WriteConfigXML(T& Ofs, const VectorOfLinesType& CurrentLines);
-
-    // Write configuration file in a nice format (same as Notepad++->Plugins->XML Tools->Pretty print)
-    void PrettyPrint(const std::string&);
-
-    static cv::Point m_P1, m_P2, m_ScaledP1, m_ScaledP2;
+    // Store mouse actions between OnMouse callbacks
+    static PointType m_P1, m_P2, m_PMousePointer, m_ScaledP1, m_ScaledP2, m_ScaledPMousePointer;
+    static int m_ClosestZoneId, m_Rotation;
     static bool m_LeftClicked;
     static bool m_RightClicked;
     static bool m_LeftDoubleClicked;
     static cv::MouseEventFlags m_Flag;
+    int m_LastRotation{};
     bool m_LastLeftClicked{false};
     bool m_LastRightClicked{false};
 
@@ -98,16 +91,14 @@ private:
     const std::string m_WinNameZoom{};
     const std::string m_ConfigPath{};
     const std::string m_SnapPath{};
-    cv::Mat ScaledImage;
-    cv::Mat* m_CurrentFramePtr;
-    int m_FrameNum{-1}; // Frame counter
-    int m_Delay{50}; // Corresponds to 30 FPS
+    cv::Mat m_CurrentScaledFrame;
+    int m_Delay{33}; // delay in ms, corresponds to 30 FPS
     const bool m_DrawROI{false};
 
-    // Domain lines related
-    int m_DomainId{1};
-    VectorOfLinesType m_CurrentLines;
-    std::map<int, VectorOfLinesType> m_AllLines;
+    // Zone lines related
+    int m_ZoneId{1};
+    LinesType m_CurrentLines;
+    std::map<int /*Zone Id*/, SZone> m_Zones;
     std::ofstream m_Ofs;
     TiXmlDocument m_Doc{};
 };

@@ -9,7 +9,7 @@ project(target_MouseEvents4CV)
 # add_subdirectory(MyLib)
 
 # Specify the C++ standard when compiling targets from the current directory and below
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Add an executable to the project using the specified source files.
